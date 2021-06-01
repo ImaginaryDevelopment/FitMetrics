@@ -1,7 +1,11 @@
 ﻿namespace FMetrics.BReusable
 
 open System
-
+module Async =
+    let ofResult x =
+        async{
+            return x
+        }
 module Logging =
     // I think making it generic means getting the type name will be a thing that can potentially be done at compile time for certain paths
     let logEx<'t when 't : null and 't :> Exception> (ex:'t) =

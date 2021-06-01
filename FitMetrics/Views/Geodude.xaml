@@ -3,21 +3,22 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 
              xmlns:vm="clr-namespace:FitMetrics.ViewModels"
+             xmlns:fvm="clr-namespace:FMetrics.ViewModels;assembly=FMetrics"
              x:Class="FitMetrics.Views.Geodude">
-    <ContentPage.BindingContext>
-        <vm:GeodudeViewModel />
-    </ContentPage.BindingContext>
+    <!--<ContentPage.BindingContext>-->
+    <!--<fvm:GeodudeFViewModel />-->
+    <!--</ContentPage.BindingContext>-->
     <ContentPage.Content>
         <StackLayout>
             <Label Text="Welcome to FitMetrics!"
                 VerticalOptions="CenterAndExpand" 
                 HorizontalOptions="CenterAndExpand" />
-            <Label Text="{Binding Latitude, StringFormat='Latitude: {0}'}"  TextColor="DarkBlue"  VerticalOptions="CenterAndExpand"  HorizontalOptions="CenterAndExpand"/>
-            <Label Text="{Binding Longitude, StringFormat='Longitude: {0}'}" TextColor="Purple"  VerticalOptions="CenterAndExpand"  HorizontalOptions="CenterAndExpand"/>
+            <Label Text="{Binding Latitude,Mode=OneWay, StringFormat='Latitude: {0}'}"  TextColor="DarkBlue"  VerticalOptions="CenterAndExpand"  HorizontalOptions="CenterAndExpand"/>
+            <Label Text="{Binding Longitude,Mode=OneWay, StringFormat='Longitude: {0}'}" TextColor="Purple"  VerticalOptions="CenterAndExpand"  HorizontalOptions="CenterAndExpand"/>
             <Label>
                 <Label.FormattedText>
                     <FormattedString>
-                        <Span Text="{Binding Error}" TextColor="DarkRed" />
+                        <Span Text="{Binding Error,Mode=OneWay}" TextColor="DarkRed" />
                     </FormattedString>
                 </Label.FormattedText>
             </Label>

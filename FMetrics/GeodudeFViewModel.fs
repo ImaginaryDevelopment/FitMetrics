@@ -46,6 +46,7 @@ type Item = {Id:string; Text:string; Description:string}
 [<AbstractClass>]
 //public class BaseViewModel : INotifyPropertyChanged
 type BaseViewModel() as self =
+
     let propertyChanged = new Event<_, _>()
     let createInpc name defaultValue (options:Inpc.InpcOptions<'t> option) : Inpc.InpcWrapper<'t> =
         let opts: Inpc.InpcOptions<'t> option =
@@ -55,7 +56,6 @@ type BaseViewModel() as self =
             |> Some
         Inpc.createInpc self propertyChanged name defaultValue opts
 
-    //public IDataStore<Item> DataStore => DependencyService.Get<IDataStore<Item>>();
     let dataStore = DependencyService.Get<IDataStore<Item>> ()
     let isBusy = createInpc "IsBusy" false None
     let title = createInpc "Title" String.Empty None
@@ -69,16 +69,39 @@ type BaseViewModel() as self =
     abstract member RaisePropertyChanged : string -> unit
     default x.RaisePropertyChanged(propertyName : string) = propertyChanged.Trigger(x, System.ComponentModel.PropertyChangedEventArgs(propertyName))
     member __.PropertyChanged = propertyChanged
+
 module GeodudeLogic =
+    let onMain f =
+        let t = Func<Task<'t>>(f>>Async.StartAsTask)
+        MainThread.InvokeOnMainThreadAsync(funcTask=t)
+    let tryGetPermission<'t when 't : (new: unit-> 't) and 't :> Permissions.BasePermission>()  =
+        async{
+                let innerTask:Func<Task<PermissionStatus>> = Func<_>(fun () -> Permissions.RequestAsync<'t>())
+                do! Async.Sleep 250
+                let task = MainThread.InvokeOnMainThreadAsync<_>(funcTask=innerTask)
+                let! permResult = Async.AwaitTask task
+                if not (permResult = PermissionStatus.Granted) then
+                    return Error ()
+                else return Ok ()
+
+        }
+    let tryGetLocationPerm () =
+        async{
+            let! p = tryGetPermission<Permissions.LocationWhenInUse>()
+            match p with
+            | Error () -> return Error "No Permissions"
+            | Ok () -> return Ok()
+        }
     let tryGetLocation() =
         eprintfn "geo, dude?"
         async {
             try
-                match! Async.AwaitTask <| Geolocation.GetLastKnownLocationAsync() with
+                match! Async.AwaitTask <| Geolocation.GetLocationAsync() with
                 | null ->
                     eprintfn "No geo, dude"
                     return Error "No location found"
                 | location ->
+                    printfn "geo, dude: %A" location
                     return Ok location
             with
             | :? FeatureNotSupportedException as fns ->
@@ -95,6 +118,7 @@ module GeodudeLogic =
                 Logging.logEx ex
                 return Error ex.Message
         }
+
     let runForever (sleep:int<ms>) f (t:CancellationToken) =
         let aTask =
             async {
@@ -114,6 +138,8 @@ type GeodudeFViewModel() as self =
     let latitude = createInpc "Latitude" String.Null None
     let longitude = createInpc "Longitude" String.Null None
     let error = createInpc "Error" String.Null None
+    let mutable havePerms = false
+
     let tokenSource = new CancellationTokenSource()
     let mutable disposed = false
     let cleanup(disposing:bool) =
@@ -126,35 +152,44 @@ type GeodudeFViewModel() as self =
                 ()
             // cleanup unmanaged resources
             ()
-
     do
         base.Title <- "Gps"
         printfn "Creating a geo vm"
-        self.Init()
-        GeodudeLogic.runForever 500<ms> (fun () ->
-            self.Init()
-        ) tokenSource.Token
 
-    member __.Latitude
+    member _.Latitude
         with get () = latitude.Value
         and set v = latitude.Value <- v
-    member __.Longitude
+    member _.Longitude
         with get () = longitude.Value
         and set v = longitude.Value <- v
-    member __.Error
+    member _.Error
         with get () = error.Value
         and set v = error.Value <- v
 
-    member this.Init() =
-        GeodudeLogic.tryGetLocation()
-        |> Async.RunSynchronously
-        |> function
-            |Ok location ->
-                this.Error <- String.Empty
-                this.Latitude <- string location.Latitude
-                this.Longitude <- string location.Longitude
-            |Error e ->
+    member this.Init():Task=
+        async{
+            match! GeodudeLogic.tryGetLocationPerm() with
+            | Error e ->
                 this.Error <- e
+                return ()
+            | Ok () ->
+                havePerms <- true
+                let! result = GeodudeLogic.tryGetLocation()
+                match result with
+                |Ok location ->
+                    this.Error <- DateTime.Now.ToLongTimeString()
+                    this.Latitude <- string location.Latitude
+                    this.Longitude <- string location.Longitude
+                |Error e ->
+                    this.Error <- e
+        }
+        |> Async.StartAsTask
+        :> Task
+    member this.StartLoop() = 
+        if havePerms then
+            GeodudeLogic.runForever 500<ms> (fun () ->
+                this.Init() |> Async.AwaitTask |> Async.RunSynchronously
+            ) tokenSource.Token
 
     member this.Dispose()=
         cleanup(true)

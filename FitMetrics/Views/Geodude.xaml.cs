@@ -18,8 +18,12 @@ namespace FitMetrics.Views
         }
         public static async Task NavigateTo()
         {
+            var vm = new FMetrics.ViewModels.GeodudeFViewModel();
+            await vm.Init();
             Console.Write("I'm trying to navigate here");
             await Shell.Current.GoToAsync($"{nameof(Geodude)}");
+            Shell.Current.BindingContext = vm;
+            vm.StartLoop();
         }
     }
 
