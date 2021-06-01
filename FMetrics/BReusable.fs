@@ -15,6 +15,7 @@ module String =
         if String.IsNullOrEmpty delimiter then
             invalidArg (nameof delimiter) "delimiter must be a value string"
         value.[0..value.IndexOf delimiter - 1]
+    let Null:string = null
 
 #if DEBUG
 

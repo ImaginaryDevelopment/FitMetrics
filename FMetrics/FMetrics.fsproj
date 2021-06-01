@@ -7,7 +7,14 @@
 
   <ItemGroup>
     <Compile Include="BReusable.fs" />
+    <Compile Include="WpfHelpers.fs" />
+    <Compile Include="GeodudeFViewModel.fs" />
     <Compile Include="CHelpers.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Xamarin.Essentials" Version="1.6.1" />
+    <PackageReference Include="Xamarin.Forms" Version="5.0.0.2012" />
   </ItemGroup>
 
 </Project>
